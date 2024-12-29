@@ -6,4 +6,4 @@
 git clone https://github.com/emilythenn/StudentPortal
 ```
 
-2. Right-click the `StudentPortalLogin` and select run 'Main'.
+2. Right-click the `StudentPortalLogin` file and select run 'Main'.
