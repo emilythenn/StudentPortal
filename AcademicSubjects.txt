@@ -1,0 +1,16 @@
+1103,Malay Language
+1119,English Language
+1223,Islamic Education
+1225,Moral Education
+1249,History
+1449,Mathematics
+1511,Science
+3472,Additional Mathematics
+3754,Entrepreneurial Studies
+3766,Business
+3756,Principles of Accounting
+3767,Economics
+4531,Physics
+4541,Chemistry
+4551,Biology
+6531,Chinese Language

@@ -1,0 +1,2 @@
+s100201,Active Member,President,Vice Secretary
+s100202,Treasurer,Committee,Vice President

@@ -1,0 +1,9 @@
+B01,Scout
+B03,Police Cadet
+B07,The Boys' Brigade
+P27,Computer Society
+P81,Young Entrepreneur Society
+P82,Robotic Club
+S01,Badminton Club
+S10,Swimming Club
+S15,Fencing Club
