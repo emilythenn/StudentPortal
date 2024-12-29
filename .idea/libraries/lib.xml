@@ -1,16 +1,16 @@
 <component name="libraryTable">
   <library name="lib">
     <CLASSES>
-      <root url="file://$PROJECT_DIR$/../../../../../Program Files/Java/javafx-sdk-23.0.1/lib" />
-      <root url="file://$PROJECT_DIR$/../../../../../Program Files/Java/iText7-Core-7.1.4" />
-      <root url="jar://$PROJECT_DIR$/../../../../../Program Files/Java/jakarta.mail-2.0.1.jar!/" />
+      <root url="file://$PROJECT_DIR$/../../../../Program Files/Java/javafx-sdk-23.0.1/lib" />
+      <root url="file://$PROJECT_DIR$/../../../../Program Files/Java/iText7-Core-7.1.4" />
+      <root url="jar://$PROJECT_DIR$/../../../../Program Files/Java/jakarta.mail-2.0.1.jar!/" />
     </CLASSES>
     <JAVADOC />
     <SOURCES>
-      <root url="file://$PROJECT_DIR$/../../../../../Program Files/Java/iText7-Core-7.1.4" />
+      <root url="file://$PROJECT_DIR$/../../../../Program Files/Java/iText7-Core-7.1.4" />
     </SOURCES>
-    <jarDirectory url="file://$PROJECT_DIR$/../../../../../Program Files/Java/iText7-Core-7.1.4" recursive="false" />
-    <jarDirectory url="file://$PROJECT_DIR$/../../../../../Program Files/Java/javafx-sdk-23.0.1/lib" recursive="false" />
-    <jarDirectory url="file://$PROJECT_DIR$/../../../../../Program Files/Java/iText7-Core-7.1.4" recursive="false" type="SOURCES" />
+    <jarDirectory url="file://$PROJECT_DIR$/../../../../Program Files/Java/iText7-Core-7.1.4" recursive="false" />
+    <jarDirectory url="file://$PROJECT_DIR$/../../../../Program Files/Java/javafx-sdk-23.0.1/lib" recursive="false" />
+    <jarDirectory url="file://$PROJECT_DIR$/../../../../Program Files/Java/iText7-Core-7.1.4" recursive="false" type="SOURCES" />
   </library>
 </component>
