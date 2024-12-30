@@ -84,14 +84,14 @@ public class EmailGUI extends Application {
 
     private void sendEmailWithAttachment(String pdfFileName) {
         // Email configuration
-        String recipientEmail = "zengy0217@gmail.com";  // Use the saved user email here
+        String recipientEmail = "...@gmail.com";  // Use the saved user email here
         String subject = "Co-curriculum Transcript";
         String body = "Please find your co-curriculum transcript attached.";  // Use the generated transcript content as the email body
 
         String smtpHost = "smtp.gmail.com";
         String smtpPort = "587";
-        String username = "m-860935@moe-dl.edu.my";  // Enter your Gmail username
-        String password = "exnssmpudhmnmgui";  // Enter your Gmail password
+        String username = ".....";  // Enter your Gmail username
+        String password = "...";  // Enter your Gmail password
 
         try {
             // Set up mail properties
