@@ -1,3 +1,4 @@
+
 import javafx.application.Application;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -13,11 +14,14 @@ public class CocurriculumMarkCalculatorGUI extends Application {
     private TextArea transcriptArea;
     private TextField matricField;
     private CocurriculumMarkCalculator calculator;
+    private PDFGenerator pdfGenerator;
+    private String generatedTranscriptContent;
 
     @Override
     public void start(Stage primaryStage) {
         calculator = new CocurriculumMarkCalculator();
         calculator.loadData();
+        pdfGenerator = new PDFGenerator(); // Initialize pdfGenerator here
 
         // Create main container
         VBox mainContainer = new VBox(15);
@@ -42,7 +46,10 @@ public class CocurriculumMarkCalculatorGUI extends Application {
         Button generateButton = new Button("Generate Transcript");
         generateButton.setStyle("-fx-background-color: #4CAF50; -fx-text-fill: white;");
 
-        inputBox.getChildren().addAll(matricLabel, matricField, generateButton);
+        Button sendEmailButton = new Button("Send Email");
+        sendEmailButton.setStyle("-fx-background-color: #4CAF50; -fx-text-fill: white;");
+
+        inputBox.getChildren().addAll(matricLabel, matricField, generateButton, sendEmailButton);
 
         // Create transcript area
         transcriptArea = new TextArea();
@@ -64,8 +71,9 @@ public class CocurriculumMarkCalculatorGUI extends Application {
         primaryStage.setMinWidth(600);
         primaryStage.setMinHeight(400);
 
-        // Add button action
+        // Add button actions
         generateButton.setOnAction(e -> generateTranscript());
+        sendEmailButton.setOnAction(e -> openEmailGUI());
 
         // Show the stage
         primaryStage.show();
@@ -92,14 +100,36 @@ public class CocurriculumMarkCalculatorGUI extends Application {
         System.setOut(oldOut);
 
         // Display the output
-        String transcript = outputStream.toString();
-        if (transcript.trim().isEmpty() || transcript.contains("No data found")) {
-            showAlert(Alert.AlertType.ERROR, "Error",
-                    "No data found for matric number: " + matricNumber);
+        generatedTranscriptContent = outputStream.toString();  // Store the generated content here
+        if (generatedTranscriptContent.trim().isEmpty() || generatedTranscriptContent.contains("No data found")) {
+            showAlert(Alert.AlertType.ERROR, "Error", "No data found for matric number: " + matricNumber);
             transcriptArea.clear();
         } else {
-            transcriptArea.setText(transcript);
+            transcriptArea.setText(generatedTranscriptContent);  // Display the transcript in the TextArea
+            try {
+                String pdfFileName = "Transcript_" + matricNumber + ".pdf";
+                pdfGenerator.generatePDF(pdfFileName, generatedTranscriptContent);  // Generate the PDF with the content
+                showAlert(Alert.AlertType.INFORMATION, "PDF Generated", "Transcript saved as " + pdfFileName);
+            } catch (Exception e) {
+                showAlert(Alert.AlertType.ERROR, "Error", "Failed to generate PDF: " + e.getMessage());
+            }
         }
+    }
+
+    private void openEmailGUI() {
+        if (this.generatedTranscriptContent == null || this.generatedTranscriptContent.isEmpty()) {
+            showAlert(Alert.AlertType.ERROR, "Error", "Please generate the transcript first.");
+            return;
+        }
+
+        // Open Email GUI and pass the transcript content
+        EmailGUI emailGUI = new EmailGUI(this.generatedTranscriptContent);
+        Stage emailStage = new Stage();
+
+        Scene emailScene = emailGUI.createEmailScene();  // Assuming createEmailScene() in EmailGUI returns the scene
+        emailStage.setTitle("Send Transcript Email");
+        emailStage.setScene(emailScene);
+        emailStage.show();
     }
 
     private void showAlert(Alert.AlertType type, String title, String content) {
@@ -112,9 +142,5 @@ public class CocurriculumMarkCalculatorGUI extends Application {
 
     public static void main(String[] args) {
         launch(args);
-    }
-
-    public void setStudentId(String currentStudentId) {
-
     }
 }
