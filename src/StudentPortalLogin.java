@@ -15,6 +15,7 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 class Student {
     String email;
@@ -53,28 +54,49 @@ public class StudentPortalLogin extends Application {
     private void loadStudentData() {
         try {
             List<String> lines = Files.readAllLines(Paths.get(FILE_PATH));
-            for (int i = 0; i < lines.size(); i += 5) {
-                if (i + 4 >= lines.size()) break;
 
+            // Skip empty lines and process the remaining ones
+            lines = lines.stream().filter(line -> !line.trim().isEmpty()).collect(Collectors.toList());
+
+            // Ensure we are processing in sets of 5 lines (for email, ID, password, subjects, clubs)
+            for (int i = 0; i + 4 < lines.size(); i += 5) {
                 String email = lines.get(i).trim();
                 String id = lines.get(i + 1).trim();
                 String password = lines.get(i + 2).trim();
                 List<String> subjects = Arrays.asList(lines.get(i + 3).trim().split(","));
                 List<String> clubs = Arrays.asList(lines.get(i + 4).trim().split(","));
 
-                if (!STUDENT_ID_PATTERN.matcher(id).matches() ||
-                        !EMAIL_PATTERN.matcher(email).matches()) {
+                // Log the parsed lines for debugging
+                System.out.println("Processing student data:");
+                System.out.println("Email: " + email);
+                System.out.println("ID: " + id);
+                System.out.println("Password: " + password);
+                System.out.println("Subjects: " + subjects);
+                System.out.println("Clubs: " + clubs);
+
+                // Validate the format
+                if (!STUDENT_ID_PATTERN.matcher(id).matches() || !EMAIL_PATTERN.matcher(email).matches()) {
                     System.err.println("Invalid format for ID: " + id + " or email: " + email);
                     continue;
                 }
 
+                // Store the student in the map
                 students.put(id.toLowerCase(), new Student(email, id, password, subjects, clubs));
                 System.out.println("Loaded student: " + id);
             }
+
+            if (students.isEmpty()) {
+                System.err.println("No students were loaded.");
+            }
+
         } catch (IOException e) {
             showAlert(Alert.AlertType.ERROR, "Error", "Failed to load student data: " + e.getMessage());
         }
     }
+
+
+
+
 
     private void showLoginScreen() {
         VBox mainContainer = new VBox(20);
@@ -86,8 +108,8 @@ public class StudentPortalLogin extends Application {
         btnExit.setStyle("-fx-background-color: #f44336; -fx-text-fill: white;");
         AnchorPane exitPane = new AnchorPane();
         exitPane.getChildren().add(btnExit);
-        AnchorPane.setRightAnchor(btnExit, 10.0);
         AnchorPane.setTopAnchor(btnExit, 10.0);
+        AnchorPane.setRightAnchor(btnExit,8.0);
 
         VBox contentContainer = new VBox(15);
         contentContainer.setMaxWidth(350);
@@ -307,17 +329,20 @@ public class StudentPortalLogin extends Application {
         }
 
         Student student = null;
-        // Try to find student by ID first
-        student = students.get(login.toLowerCase());
 
-        // If not found by ID, try email
-        if (student == null) {
+        // Check if login is an email or student ID
+        if (EMAIL_PATTERN.matcher(login).matches()) {
+            // Try to find student by email
             student = students.values().stream()
                     .filter(s -> s.email.equalsIgnoreCase(login))
                     .findFirst()
                     .orElse(null);
+        } else if (STUDENT_ID_PATTERN.matcher(login).matches()) {
+            // Try to find student by ID
+            student = students.get(login.toLowerCase());
         }
 
+        // Check if student exists and the password is correct
         if (student != null && student.password.equals(password)) {
             currentStudentId = student.id;
             failedLoginAttempts.remove(login); // Reset failed attempts on successful login
@@ -331,6 +356,7 @@ public class StudentPortalLogin extends Application {
                             MAX_LOGIN_ATTEMPTS - attempts));
         }
     }
+
 
     private void showDashboard() {
         VBox dashboardLayout = new VBox(15);
@@ -456,8 +482,12 @@ public class StudentPortalLogin extends Application {
         try {
             Stage transcriptStage = new Stage();
             CocurriculumMarkCalculatorGUI transcriptGUI = new CocurriculumMarkCalculatorGUI();
-            transcriptGUI.setStudentId(currentStudentId);
             transcriptGUI.start(transcriptStage);
+
+            AcademicInfoGUI setStudentId = new AcademicInfoGUI();
+            setStudentId.setStudentId(currentStudentId);
+
+
         } catch (Exception e) {
             e.printStackTrace();
             showAlert(Alert.AlertType.ERROR, "Error", "Failed to open Co-curriculum Transcript: " + e.getMessage());
