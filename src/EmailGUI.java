@@ -1,8 +1,11 @@
+package com.example;
+
 import javafx.application.Application;
 import javafx.stage.Stage;
 import javafx.scene.Scene;
 import javafx.scene.layout.VBox;
 import javafx.scene.control.Button;
+import javafx.scene.control.TextField;
 import javafx.scene.text.Text;
 import javafx.geometry.Pos;
 
@@ -18,6 +21,7 @@ import com.itextpdf.layout.element.Paragraph;
 
 public class EmailGUI extends Application {
     private String emailContent;
+    private TextField emailInput;
 
     public EmailGUI() {
         this.emailContent = "Sample Transcript Content"; // Example default content
@@ -39,12 +43,23 @@ public class EmailGUI extends Application {
     }
 
     public Scene createEmailScene() {
+        // Text field for email input
+        emailInput = new TextField();
+        emailInput.setPromptText("Enter recipient email");
+
         // Button to generate the PDF and send the email
         Button sendButton = new Button("Generate PDF and Send Email");
-        sendButton.setOnAction(e -> generatePDFAndSendEmail());
+        sendButton.setOnAction(e -> {
+            System.out.println("Button clicked");
+            generatePDFAndSendEmail();
+        });
 
         // Layout for the email scene
-        VBox vbox = new VBox(new Text("Email Transcript"), sendButton);
+        VBox vbox = new VBox(
+                new Text("Email Transcript"),
+                emailInput,
+                sendButton
+        );
         vbox.setSpacing(10);
         vbox.setAlignment(Pos.CENTER);
 
@@ -53,13 +68,24 @@ public class EmailGUI extends Application {
     }
 
     private void generatePDFAndSendEmail() {
+        String recipientEmail = emailInput.getText().trim();
+        if (recipientEmail.isEmpty()) {
+            showAlert("Error", "Please enter a valid email address.");
+            return;
+        }
+        System.out.println("Recipient email: " + recipientEmail);
+
         try {
             // Step 1: Generate the PDF file
             String pdfFileName = "transcript.pdf";
+            System.out.println("Generating PDF...");
             generatePDF(pdfFileName, emailContent);
+            System.out.println("PDF generated: " + pdfFileName);
 
             // Step 2: Send the email with the PDF attachment
-            sendEmailWithAttachment(pdfFileName);
+            System.out.println("Sending email...");
+            sendEmailWithAttachment(recipientEmail, pdfFileName);
+            System.out.println("Email sent successfully.");
         } catch (FileNotFoundException e) {
             showAlert("Error", "Failed to generate PDF: " + e.getMessage());
         }
@@ -80,18 +106,18 @@ public class EmailGUI extends Application {
 
         // Close the document
         document.close();
+        System.out.println("PDF creation complete.");
     }
 
-    private void sendEmailWithAttachment(String pdfFileName) {
+    private void sendEmailWithAttachment(String recipientEmail, String pdfFileName) {
         // Email configuration
-        String recipientEmail = "...@gmail.com";  // Use the saved user email here
         String subject = "Co-curriculum Transcript";
-        String body = "Please find your co-curriculum transcript attached.";  // Use the generated transcript content as the email body
+        String body = "Please find your co-curriculum transcript attached.";
 
         String smtpHost = "smtp.gmail.com";
         String smtpPort = "587";
-        String username = ".....";  // Enter your Gmail username
-        String password = "...";  // Enter your Gmail password
+        String username = "m-860935@moe-dl.edu.my";  // Enter your Gmail username
+        String password = "exnssmpudhmnmgui";  // Enter your Gmail password
 
         try {
             // Set up mail properties
@@ -135,7 +161,7 @@ public class EmailGUI extends Application {
 
     private void showAlert(String title, String content) {
         // Display an alert (simulating a simple alert for simplicity)
-        System.out.println(title + ": " + content);  // Simulating an alert for simplicity
+        System.out.println(title + ": " + content);
     }
 
     public static void main(String[] args) {
