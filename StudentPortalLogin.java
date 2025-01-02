@@ -3,20 +3,12 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
-import javafx.scene.layout.AnchorPane;
-import javafx.scene.layout.HBox;
-import javafx.scene.layout.VBox;
+import javafx.scene.layout.*;
 import javafx.stage.Stage;
-
-import java.io.BufferedReader;
-import java.io.FileReader;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
+import java.io.*;
+import java.nio.file.*;
 import java.util.*;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 class Student {
     String email;
@@ -55,49 +47,28 @@ public class StudentPortalLogin extends Application {
     private void loadStudentData() {
         try {
             List<String> lines = Files.readAllLines(Paths.get(FILE_PATH));
+            for (int i = 0; i < lines.size(); i += 5) {
+                if (i + 4 >= lines.size()) break;
 
-            // Skip empty lines and process the remaining ones
-            lines = lines.stream().filter(line -> !line.trim().isEmpty()).collect(Collectors.toList());
-
-            // Ensure we are processing in sets of 5 lines (for email, ID, password, subjects, clubs)
-            for (int i = 0; i + 4 < lines.size(); i += 5) {
                 String email = lines.get(i).trim();
                 String id = lines.get(i + 1).trim();
                 String password = lines.get(i + 2).trim();
                 List<String> subjects = Arrays.asList(lines.get(i + 3).trim().split(","));
                 List<String> clubs = Arrays.asList(lines.get(i + 4).trim().split(","));
 
-                // Log the parsed lines for debugging
-                System.out.println("Processing student data:");
-                System.out.println("Email: " + email);
-                System.out.println("ID: " + id);
-                System.out.println("Password: " + password);
-                System.out.println("Subjects: " + subjects);
-                System.out.println("Clubs: " + clubs);
-
-                // Validate the format
-                if (!STUDENT_ID_PATTERN.matcher(id).matches() || !EMAIL_PATTERN.matcher(email).matches()) {
+                if (!STUDENT_ID_PATTERN.matcher(id).matches() ||
+                        !EMAIL_PATTERN.matcher(email).matches()) {
                     System.err.println("Invalid format for ID: " + id + " or email: " + email);
                     continue;
                 }
 
-                // Store the student in the map
                 students.put(id.toLowerCase(), new Student(email, id, password, subjects, clubs));
                 System.out.println("Loaded student: " + id);
             }
-
-            if (students.isEmpty()) {
-                System.err.println("No students were loaded.");
-            }
-
         } catch (IOException e) {
             showAlert(Alert.AlertType.ERROR, "Error", "Failed to load student data: " + e.getMessage());
         }
     }
-
-
-
-
 
     private void showLoginScreen() {
         VBox mainContainer = new VBox(20);
@@ -109,8 +80,8 @@ public class StudentPortalLogin extends Application {
         btnExit.setStyle("-fx-background-color: #f44336; -fx-text-fill: white;");
         AnchorPane exitPane = new AnchorPane();
         exitPane.getChildren().add(btnExit);
+        AnchorPane.setRightAnchor(btnExit, 10.0);
         AnchorPane.setTopAnchor(btnExit, 10.0);
-        AnchorPane.setRightAnchor(btnExit,8.0);
 
         VBox contentContainer = new VBox(15);
         contentContainer.setMaxWidth(350);
@@ -197,76 +168,40 @@ public class StudentPortalLogin extends Application {
     private void showForgotPasswordDialog() {
         Dialog<String> dialog = new Dialog<>();
         dialog.setTitle("Password Recovery");
+        dialog.setHeaderText("Enter your student email to recover password");
 
+        // Create the dialog content
         VBox content = new VBox(10);
         content.setPadding(new Insets(20));
 
         TextField emailField = new TextField();
         emailField.setPromptText("student@student.fop");
-
-        PasswordField newPasswordField = new PasswordField();
-        newPasswordField.setPromptText("New password");
-
-        PasswordField confirmPasswordField = new PasswordField();
-        confirmPasswordField.setPromptText("Confirm new password");
-
-        content.getChildren().addAll(
-                new Label("Email:"), emailField,
-                new Label("New Password:"), newPasswordField,
-                new Label("Confirm Password:"), confirmPasswordField
-        );
+        content.getChildren().addAll(new Label("Email:"), emailField);
 
         dialog.getDialogPane().setContent(content);
         dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
 
+        // Handle the recovery process
         dialog.setResultConverter(buttonType -> {
             if (buttonType == ButtonType.OK) {
                 String email = emailField.getText().trim();
-                String newPassword = newPasswordField.getText();
-                String confirmPassword = confirmPasswordField.getText();
-
+                if (email.isEmpty()) {
+                    showAlert(Alert.AlertType.ERROR, "Error", "Please enter your email address");
+                    return null;
+                }
                 if (!EMAIL_PATTERN.matcher(email).matches()) {
                     showAlert(Alert.AlertType.ERROR, "Error", "Invalid email format");
                     return null;
                 }
 
-                if (!isValidPassword(newPassword)) {
-                    showAlert(Alert.AlertType.ERROR, "Error",
-                            "Password must be at least 8 characters long and contain:\n" +
-                                    "- One uppercase letter\n" +
-                                    "- One lowercase letter\n" +
-                                    "- One number\n" +
-                                    "- One special character");
-                    return null;
-                }
-
-                if (!newPassword.equals(confirmPassword)) {
-                    showAlert(Alert.AlertType.ERROR, "Error", "Passwords do not match");
-                    return null;
-                }
-
+                // Find student by email
                 Optional<Student> student = students.values().stream()
                         .filter(s -> s.email.equalsIgnoreCase(email))
                         .findFirst();
 
                 if (student.isPresent()) {
-                    student.get().password = newPassword;
-                    // Update password in file
-                    try {
-                        List<String> lines = Files.readAllLines(Paths.get(FILE_PATH));
-                        for (int i = 0; i < lines.size(); i += 5) {
-                            if (lines.get(i).equals(email)) {
-                                lines.set(i + 2, newPassword);
-                                break;
-                            }
-                        }
-                        Files.write(Paths.get(FILE_PATH), lines);
-                        showAlert(Alert.AlertType.INFORMATION, "Success",
-                                "Password has been reset successfully!");
-                    } catch (IOException e) {
-                        showAlert(Alert.AlertType.ERROR, "Error",
-                                "Failed to update password: " + e.getMessage());
-                    }
+                    showAlert(Alert.AlertType.INFORMATION, "Password Recovery",
+                            "Password reset instructions have been sent to your email address.");
                 } else {
                     showAlert(Alert.AlertType.ERROR, "Error", "Email address not found");
                 }
@@ -277,29 +212,12 @@ public class StudentPortalLogin extends Application {
         dialog.show();
     }
 
-    private boolean isValidPassword(String password) {
-        if (password.length() < 8) return false;
-
-        boolean hasUpperCase = false;
-        boolean hasLowerCase = false;
-        boolean hasDigit = false;
-        boolean hasSpecialChar = false;
-
-        for (char c : password.toCharArray()) {
-            if (Character.isUpperCase(c)) hasUpperCase = true;
-            if (Character.isLowerCase(c)) hasLowerCase = true;
-            if (Character.isDigit(c)) hasDigit = true;
-            if (!Character.isLetterOrDigit(c)) hasSpecialChar = true;
-        }
-
-        return hasUpperCase && hasLowerCase && hasDigit && hasSpecialChar;
-    }
-
     private void showSignUpDialog() {
         Dialog<String> dialog = new Dialog<>();
         dialog.setTitle("Student Registration");
         dialog.setHeaderText("Create new student account");
 
+        // Create the form content
         VBox content = new VBox(10);
         content.setPadding(new Insets(20));
 
@@ -315,39 +233,26 @@ public class StudentPortalLogin extends Application {
         PasswordField confirmPasswordField = new PasswordField();
         confirmPasswordField.setPromptText("Confirm password");
 
-        // Add subject selection
-        Label subjectLabel = new Label("Select Subjects (comma-separated):");
-        TextField subjectsField = new TextField();
-        subjectsField.setPromptText("e.g., MATH,PHY,CHEM");
-
-        // Add club selection
-        Label clubLabel = new Label("Select Clubs (comma-separated):");
-        TextField clubsField = new TextField();
-        clubsField.setPromptText("e.g., P001,B002,S003");
-
         content.getChildren().addAll(
                 new Label("Email:"), emailField,
                 new Label("Student ID:"), studentIdField,
                 new Label("Password:"), passwordField,
-                new Label("Confirm Password:"), confirmPasswordField,
-                subjectLabel, subjectsField,
-                clubLabel, clubsField
+                new Label("Confirm Password:"), confirmPasswordField
         );
 
         dialog.getDialogPane().setContent(content);
         dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
 
+        // Handle the registration process
         dialog.setResultConverter(buttonType -> {
             if (buttonType == ButtonType.OK) {
                 String email = emailField.getText().trim();
                 String id = studentIdField.getText().trim();
                 String password = passwordField.getText();
                 String confirmPassword = confirmPasswordField.getText();
-                String subjects = subjectsField.getText().trim();
-                String clubs = clubsField.getText().trim();
 
-                if (email.isEmpty() || id.isEmpty() || password.isEmpty() ||
-                        confirmPassword.isEmpty() || subjects.isEmpty() || clubs.isEmpty()) {
+                // Validate input
+                if (email.isEmpty() || id.isEmpty() || password.isEmpty() || confirmPassword.isEmpty()) {
                     showAlert(Alert.AlertType.ERROR, "Error", "All fields are required");
                     return null;
                 }
@@ -358,17 +263,7 @@ public class StudentPortalLogin extends Application {
                 }
 
                 if (!STUDENT_ID_PATTERN.matcher(id).matches()) {
-                    showAlert(Alert.AlertType.ERROR, "Error", "Invalid student ID format");
-                    return null;
-                }
-
-                if (!isValidPassword(password)) {
-                    showAlert(Alert.AlertType.ERROR, "Error",
-                            "Password must be at least 8 characters long and contain:\n" +
-                                    "- One uppercase letter\n" +
-                                    "- One lowercase letter\n" +
-                                    "- One number\n" +
-                                    "- One special character");
+                    showAlert(Alert.AlertType.ERROR, "Error", "Invalid student ID format (must be s followed by 6 digits)");
                     return null;
                 }
 
@@ -382,20 +277,9 @@ public class StudentPortalLogin extends Application {
                     return null;
                 }
 
-                // Add new student
-                List<String> subjectList = Arrays.asList(subjects.split(","));
-                List<String> clubList = Arrays.asList(clubs.split(","));
-                students.put(id.toLowerCase(), new Student(email, id, password, subjectList, clubList));
-
-                // Save to file
-                try {
-                    Files.write(Paths.get(FILE_PATH),
-                            (email + "\n" + id + "\n" + password + "\n" + subjects + "\n" + clubs + "\n\n").getBytes(),
-                            StandardOpenOption.APPEND);
-                    showAlert(Alert.AlertType.INFORMATION, "Success", "Registration successful!");
-                } catch (IOException e) {
-                    showAlert(Alert.AlertType.ERROR, "Error", "Failed to save registration");
-                }
+                // Registration successful
+                showAlert(Alert.AlertType.INFORMATION, "Success",
+                        "Registration successful! Please wait for admin approval.");
             }
             return null;
         });
@@ -417,20 +301,17 @@ public class StudentPortalLogin extends Application {
         }
 
         Student student = null;
+        // Try to find student by ID first
+        student = students.get(login.toLowerCase());
 
-        // Check if login is an email or student ID
-        if (EMAIL_PATTERN.matcher(login).matches()) {
-            // Try to find student by email
+        // If not found by ID, try email
+        if (student == null) {
             student = students.values().stream()
                     .filter(s -> s.email.equalsIgnoreCase(login))
                     .findFirst()
                     .orElse(null);
-        } else if (STUDENT_ID_PATTERN.matcher(login).matches()) {
-            // Try to find student by ID
-            student = students.get(login.toLowerCase());
         }
 
-        // Check if student exists and the password is correct
         if (student != null && student.password.equals(password)) {
             currentStudentId = student.id;
             failedLoginAttempts.remove(login); // Reset failed attempts on successful login
@@ -444,7 +325,6 @@ public class StudentPortalLogin extends Application {
                             MAX_LOGIN_ATTEMPTS - attempts));
         }
     }
-
 
     private void showDashboard() {
         VBox dashboardLayout = new VBox(15);
@@ -570,12 +450,8 @@ public class StudentPortalLogin extends Application {
         try {
             Stage transcriptStage = new Stage();
             CocurriculumMarkCalculatorGUI transcriptGUI = new CocurriculumMarkCalculatorGUI();
+            transcriptGUI.setStudentId(currentStudentId);
             transcriptGUI.start(transcriptStage);
-
-            AcademicInfoGUI setStudentId = new AcademicInfoGUI();
-            setStudentId.setStudentId(currentStudentId);
-
-
         } catch (Exception e) {
             e.printStackTrace();
             showAlert(Alert.AlertType.ERROR, "Error", "Failed to open Co-curriculum Transcript: " + e.getMessage());
