@@ -1,158 +1,472 @@
 import javafx.application.Application;
-import javafx.collections.FXCollections;
 import javafx.geometry.Insets;
+import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
-import javafx.scene.control.cell.PropertyValueFactory;
-import javafx.scene.layout.*;
+import javafx.scene.layout.AnchorPane;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
-import java.io.*;
-import java.util.*;
+
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.*;
+import java.util.regex.Pattern;
 
-public class AcademicInfoGUI extends Application {
-    private String studentId;
-    private Map<String, SubjectEntry> subjectDatabase;
+class Student {
+    String email;
+    String id;
+    String password;
+    List<String> subjects;
+    List<String> clubs;
 
-    // Add a no-argument constructor
-    public AcademicInfoGUI() {
-        this.studentId = "";
-        this.subjectDatabase = new HashMap<>();
+    public Student(String email, String id, String password, List<String> subjects, List<String> clubs) {
+        this.email = email;
+        this.id = id;
+        this.password = password;
+        this.subjects = subjects;
+        this.clubs = clubs;
     }
+}
 
-    public AcademicInfoGUI(String studentId) {
-        this.studentId = studentId;
-        this.subjectDatabase = new HashMap<>();
-        loadSubjectDatabase();
-    }
+public class StudentPortalLoginGUI extends Application {
+    private Stage primaryStage;
+    private String currentStudentId;
+    private Map<String, Student> students = new HashMap<>();
+    private Map<String, Integer> failedLoginAttempts = new HashMap<>();
+    private static final int MAX_LOGIN_ATTEMPTS = 3;
+    private static final String FILE_PATH = "UserData.txt";
 
-    public void setStudentId(String studentId) {
-        System.out.println("Setting student ID in AcademicInfo: " + studentId);
-        this.studentId = studentId;
-        loadSubjectDatabase();
-    }
-
-    private void loadSubjectDatabase() {
-        System.out.println("Loading subject database...");
-        subjectDatabase.clear(); // Clear existing data
-
-        try (BufferedReader reader = new BufferedReader(new FileReader("AcademicSubjects.txt"))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                line = line.trim();
-                if (!line.isEmpty()) {
-                    String[] parts = line.split(",");
-                    if (parts.length == 2) {
-                        String code = parts[0].trim();
-                        String name = parts[1].trim();
-                        subjectDatabase.put(code, new SubjectEntry(code, name));
-                        System.out.println("Loaded subject: " + code + " - " + name);
-                    }
-                }
-            }
-            System.out.println("Successfully loaded " + subjectDatabase.size() + " subjects into database");
-        } catch (IOException e) {
-            e.printStackTrace();
-            System.err.println("Error loading subject database: " + e.getMessage());
-        }
-    }
+    private static final Pattern STUDENT_ID_PATTERN = Pattern.compile("^s\\d{6}$");
+    private static final Pattern EMAIL_PATTERN = Pattern.compile("^[A-Za-z0-9+_.-]+@student\\.fop$");
 
     @Override
-    public void start(Stage stage) {
-        VBox layout = new VBox(15);
-        layout.setPadding(new Insets(20));
-        layout.setStyle("-fx-background-color: #f5f5f5;");
+    public void start(Stage primaryStage) {
+        this.primaryStage = primaryStage;
+        loadStudentData();
+        showLoginScreen();
+    }
 
-        Label titleLabel = new Label("Academic Information");
+    private void loadStudentData() {
+        try {
+            List<String> lines = Files.readAllLines(Paths.get(FILE_PATH));
+            for (int i = 0; i < lines.size(); i += 5) {
+                if (i + 4 >= lines.size()) break;
+
+                String email = lines.get(i).trim();
+                String id = lines.get(i + 1).trim();
+                String password = lines.get(i + 2).trim();
+                List<String> subjects = Arrays.asList(lines.get(i + 3).trim().split(","));
+                List<String> clubs = Arrays.asList(lines.get(i + 4).trim().split(","));
+
+                if (!STUDENT_ID_PATTERN.matcher(id).matches() ||
+                        !EMAIL_PATTERN.matcher(email).matches()) {
+                    System.err.println("Invalid format for ID: " + id + " or email: " + email);
+                    continue;
+                }
+
+                students.put(id.toLowerCase(), new Student(email, id, password, subjects, clubs));
+                System.out.println("Loaded student: " + id);
+            }
+        } catch (IOException e) {
+            showAlert(Alert.AlertType.ERROR, "Error", "Failed to load student data: " + e.getMessage());
+        }
+    }
+
+    private void showLoginScreen() {
+        VBox mainContainer = new VBox(20);
+        mainContainer.setAlignment(Pos.CENTER);
+        mainContainer.setStyle("-fx-background-color: #f5f5f5;");
+
+        // Add exit button at top-right corner
+        Button btnExit = new Button("Exit");
+        btnExit.setStyle("-fx-background-color: #f44336; -fx-text-fill: white;");
+        AnchorPane exitPane = new AnchorPane();
+        exitPane.getChildren().add(btnExit);
+        AnchorPane.setRightAnchor(btnExit, 10.0);
+        AnchorPane.setTopAnchor(btnExit, 10.0);
+
+        VBox contentContainer = new VBox(15);
+        contentContainer.setMaxWidth(350);
+        contentContainer.setAlignment(Pos.CENTER);
+        contentContainer.setPadding(new Insets(30));
+        contentContainer.setStyle("-fx-background-color: white; -fx-border-radius: 5; -fx-background-radius: 5;");
+
+        Label titleLabel = new Label("Student Portal Login");
         titleLabel.setStyle("-fx-font-size: 24px; -fx-font-weight: bold;");
 
-        TableView<SubjectEntry> subjectsTable = createSubjectsTable();
-        loadStudentSubjects(subjectsTable);
+        VBox inputContainer = new VBox(15);
+        inputContainer.setMaxWidth(300);
 
-        Button closeButton = new Button("Close");
-        closeButton.setStyle("-fx-background-color: #f44336; -fx-text-fill: white;");
-        closeButton.setOnAction(e -> stage.close());
+        // Email/ID field with toggle
+        VBox loginBox = new VBox(5);
+        Label loginLabel = new Label("Student ID or Email");
+        loginLabel.setStyle("-fx-font-weight: bold;");
+        TextField loginField = new TextField();
+        loginField.setPromptText("Enter ID or Email");
+        loginField.setPrefHeight(35);
+        loginField.setStyle("-fx-font-size: 14px;");
+        loginBox.getChildren().addAll(loginLabel, loginField);
 
-        layout.getChildren().addAll(titleLabel, subjectsTable, closeButton);
+        // Password field
+        VBox passwordBox = new VBox(5);
+        Label passwordLabel = new Label("Password");
+        passwordLabel.setStyle("-fx-font-weight: bold;");
+        PasswordField passwordField = new PasswordField();
+        passwordField.setPromptText("Enter your password");
+        passwordField.setPrefHeight(35);
+        passwordField.setStyle("-fx-font-size: 14px;");
+        passwordBox.getChildren().addAll(passwordLabel, passwordField);
 
-        Scene scene = new Scene(layout, 600, 400);
-        stage.setTitle("Academic Information - Student " + studentId);
-        stage.setScene(scene);
-        stage.show();
+        Button loginButton = new Button("Login");
+        loginButton.setStyle(
+                "-fx-background-color: #2196F3; " +
+                        "-fx-text-fill: white; " +
+                        "-fx-min-width: 300px; " +
+                        "-fx-min-height: 35px; " +
+                        "-fx-font-size: 14px; " +
+                        "-fx-cursor: hand;"
+        );
+
+        Separator separator = new Separator();
+        separator.setMaxWidth(300);
+
+        HBox linksBox = new HBox(20);
+        linksBox.setAlignment(Pos.CENTER);
+
+        Hyperlink forgotPasswordLink = new Hyperlink("Forgot Password?");
+        Hyperlink signUpLink = new Hyperlink("Sign Up");
+
+        forgotPasswordLink.setStyle("-fx-font-size: 14px;");
+        signUpLink.setStyle("-fx-font-size: 14px;");
+
+        linksBox.getChildren().addAll(forgotPasswordLink, signUpLink);
+
+        // Add components to containers
+        inputContainer.getChildren().addAll(loginBox, passwordBox);
+        contentContainer.getChildren().addAll(
+                titleLabel,
+                inputContainer,
+                loginButton,
+                separator,
+                linksBox
+        );
+
+        mainContainer.getChildren().addAll(exitPane, contentContainer);
+
+        // Event handlers
+        loginButton.setOnAction(e -> validateLogin(loginField.getText(), passwordField.getText()));
+        btnExit.setOnAction(e -> primaryStage.close());
+        forgotPasswordLink.setOnAction(e -> showForgotPasswordDialog());
+        signUpLink.setOnAction(e -> showSignUpDialog());
+        passwordField.setOnAction(e -> validateLogin(loginField.getText(), passwordField.getText()));
+
+        Scene scene = new Scene(mainContainer, 500, 600);
+        primaryStage.setTitle("Student Portal Login");
+        primaryStage.setScene(scene);
+        primaryStage.centerOnScreen();
+        primaryStage.show();
     }
 
-    private TableView<SubjectEntry> createSubjectsTable() {
-        TableView<SubjectEntry> table = new TableView<>();
+    private void showForgotPasswordDialog() {
+        Dialog<String> dialog = new Dialog<>();
+        dialog.setTitle("Password Recovery");
+        dialog.setHeaderText("Enter your student email to recover password");
 
-        TableColumn<SubjectEntry, String> codeCol = new TableColumn<>("Subject Code");
-        codeCol.setCellValueFactory(new PropertyValueFactory<>("code"));
-        codeCol.setPrefWidth(150);
+        // Create the dialog content
+        VBox content = new VBox(10);
+        content.setPadding(new Insets(20));
 
-        TableColumn<SubjectEntry, String> nameCol = new TableColumn<>("Subject Name");
-        nameCol.setCellValueFactory(new PropertyValueFactory<>("name"));
-        nameCol.setPrefWidth(400);
+        TextField emailField = new TextField();
+        emailField.setPromptText("student@student.fop");
+        content.getChildren().addAll(new Label("Email:"), emailField);
 
-        table.getColumns().addAll(codeCol, nameCol);
-        return table;
+        dialog.getDialogPane().setContent(content);
+        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+
+        // Handle the recovery process
+        dialog.setResultConverter(buttonType -> {
+            if (buttonType == ButtonType.OK) {
+                String email = emailField.getText().trim();
+                if (email.isEmpty()) {
+                    showAlert(Alert.AlertType.ERROR, "Error", "Please enter your email address");
+                    return null;
+                }
+                if (!EMAIL_PATTERN.matcher(email).matches()) {
+                    showAlert(Alert.AlertType.ERROR, "Error", "Invalid email format");
+                    return null;
+                }
+
+                // Find student by email
+                Optional<Student> student = students.values().stream()
+                        .filter(s -> s.email.equalsIgnoreCase(email))
+                        .findFirst();
+
+                if (student.isPresent()) {
+                    showAlert(Alert.AlertType.INFORMATION, "Password Recovery",
+                            "Password reset instructions have been sent to your email address.");
+                } else {
+                    showAlert(Alert.AlertType.ERROR, "Error", "Email address not found");
+                }
+            }
+            return null;
+        });
+
+        dialog.show();
     }
 
-    private void loadStudentSubjects(TableView<SubjectEntry> table) {
-        List<SubjectEntry> subjectList = new ArrayList<>();
-        System.out.println("Looking for subjects for student ID: " + studentId);
+    private void showSignUpDialog() {
+        Dialog<String> dialog = new Dialog<>();
+        dialog.setTitle("Student Registration");
+        dialog.setHeaderText("Create new student account");
 
+        // Create the form content
+        VBox content = new VBox(10);
+        content.setPadding(new Insets(20));
+
+        TextField emailField = new TextField();
+        emailField.setPromptText("student@student.fop");
+
+        TextField studentIdField = new TextField();
+        studentIdField.setPromptText("s123456");
+
+        PasswordField passwordField = new PasswordField();
+        passwordField.setPromptText("Enter password");
+
+        PasswordField confirmPasswordField = new PasswordField();
+        confirmPasswordField.setPromptText("Confirm password");
+
+        content.getChildren().addAll(
+                new Label("Email:"), emailField,
+                new Label("Student ID:"), studentIdField,
+                new Label("Password:"), passwordField,
+                new Label("Confirm Password:"), confirmPasswordField
+        );
+
+        dialog.getDialogPane().setContent(content);
+        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+
+        // Handle the registration process
+        dialog.setResultConverter(buttonType -> {
+            if (buttonType == ButtonType.OK) {
+                String email = emailField.getText().trim();
+                String id = studentIdField.getText().trim();
+                String password = passwordField.getText();
+                String confirmPassword = confirmPasswordField.getText();
+
+                // Validate input
+                if (email.isEmpty() || id.isEmpty() || password.isEmpty() || confirmPassword.isEmpty()) {
+                    showAlert(Alert.AlertType.ERROR, "Error", "All fields are required");
+                    return null;
+                }
+
+                if (!EMAIL_PATTERN.matcher(email).matches()) {
+                    showAlert(Alert.AlertType.ERROR, "Error", "Invalid email format");
+                    return null;
+                }
+
+                if (!STUDENT_ID_PATTERN.matcher(id).matches()) {
+                    showAlert(Alert.AlertType.ERROR, "Error", "Invalid student ID format (must be s followed by 6 digits)");
+                    return null;
+                }
+
+                if (!password.equals(confirmPassword)) {
+                    showAlert(Alert.AlertType.ERROR, "Error", "Passwords do not match");
+                    return null;
+                }
+
+                if (students.containsKey(id.toLowerCase())) {
+                    showAlert(Alert.AlertType.ERROR, "Error", "Student ID already exists");
+                    return null;
+                }
+
+                // Registration successful
+                showAlert(Alert.AlertType.INFORMATION, "Success",
+                        "Registration successful! Please wait for admin approval.");
+            }
+            return null;
+        });
+
+        dialog.show();
+    }
+
+    private void validateLogin(String login, String password) {
+        if (login.isEmpty() || password.isEmpty()) {
+            showAlert(Alert.AlertType.ERROR, "Login Error", "Please enter both login credentials and password");
+            return;
+        }
+
+        // Check for login attempts
+        if (failedLoginAttempts.getOrDefault(login, 0) >= MAX_LOGIN_ATTEMPTS) {
+            showAlert(Alert.AlertType.ERROR, "Account Locked",
+                    "Too many failed attempts. Please reset your password or contact support.");
+            return;
+        }
+
+        Student student = null;
+        // Try to find student by ID first
+        student = students.get(login.toLowerCase());
+
+        // If not found by ID, try email
+        if (student == null) {
+            student = students.values().stream()
+                    .filter(s -> s.email.equalsIgnoreCase(login))
+                    .findFirst()
+                    .orElse(null);
+        }
+
+        if (student != null && student.password.equals(password)) {
+            currentStudentId = student.id;
+            failedLoginAttempts.remove(login); // Reset failed attempts on successful login
+            System.out.println("Login successful for ID: " + currentStudentId);
+            showDashboard();
+        } else {
+            int attempts = failedLoginAttempts.getOrDefault(login, 0) + 1;
+            failedLoginAttempts.put(login, attempts);
+            showAlert(Alert.AlertType.ERROR, "Login Error",
+                    String.format("Invalid credentials. %d attempts remaining.",
+                            MAX_LOGIN_ATTEMPTS - attempts));
+        }
+    }
+
+    private void showDashboard() {
+        VBox dashboardLayout = new VBox(15);
+        dashboardLayout.setPadding(new Insets(20));
+        dashboardLayout.setAlignment(Pos.CENTER);
+        dashboardLayout.setStyle("-fx-background-color: #f5f5f5;");
+
+        Student student = students.get(currentStudentId.toLowerCase());
+        Label welcomeLabel = new Label("Welcome, " + student.email);
+        welcomeLabel.setStyle("-fx-font-size: 24px; -fx-font-weight: bold;");
+
+        Button academicButton = createStyledButton("View Academic Information", "#2196F3");
+        Button cocurricularButton = createStyledButton("View Club & Activities", "#4CAF50");
+        Button transcriptButton = createStyledButton("Generate Full Transcript", "#FF9800");
+        Button logoutButton = createStyledButton("Logout", "#f44336");
+
+        academicButton.setOnAction(e -> openAcademicInfo());
+        cocurricularButton.setOnAction(e -> openClubMembership());
+        transcriptButton.setOnAction(e -> openCocurriculumTranscript());
+        logoutButton.setOnAction(e -> logout());
+
+        dashboardLayout.getChildren().addAll(
+                welcomeLabel,
+                new Separator(),
+                academicButton,
+                cocurricularButton,
+                transcriptButton,
+                new Separator(),
+                logoutButton
+        );
+
+        Scene scene = new Scene(dashboardLayout, 600, 400);
+        primaryStage.setScene(scene);
+        primaryStage.setTitle("Student Portal Dashboard");
+    }
+
+    private Button createStyledButton(String text, String color) {
+        Button button = new Button(text);
+        button.setStyle(String.format(
+                "-fx-background-color: %s; -fx-text-fill: white; -fx-pref-width: 250px; -fx-font-size: 14px;",
+                color));
+        return button;
+    }
+
+    private void openAcademicInfo() {
         try {
-            // First read the entire file content
-            List<String> allLines = Files.readAllLines(Paths.get("UserData.txt"));
+            System.out.println("Opening academic info with ID: " + currentStudentId);
+            Stage academicStage = new Stage();
+            AcademicInfoGUI academicInfo = new AcademicInfoGUI();
+            academicInfo.setStudentId(currentStudentId);
+            academicInfo.start(academicStage);
+        } catch (Exception e) {
+            e.printStackTrace();
+            showAlert(Alert.AlertType.ERROR, "Error", "Failed to open Academic Information");
+        }
+    }
 
-            // Process lines in groups of 5 (email, id, password, subjects, clubs)
-            for (int i = 0; i < allLines.size(); i += 5) {
-                if (i + 3 >= allLines.size()) break;
+    private void openClubMembership() {
+        Stage clubStage = new Stage();
+        VBox layout = new VBox(15);
+        layout.setPadding(new Insets(20));
+        layout.setAlignment(Pos.CENTER);
 
-                String email = allLines.get(i).trim();
-                String id = allLines.get(i + 1).trim();
-                String password = allLines.get(i + 2).trim();
-                String subjects = allLines.get(i + 3).trim();
+        Student student = students.get(currentStudentId.toLowerCase());
+        Label titleLabel = new Label("Club & Activities");
+        titleLabel.setStyle("-fx-font-size: 20px; -fx-font-weight: bold;");
 
-                System.out.println("Processing student record:");
-                System.out.println("ID from file: [" + id + "]");
-                System.out.println("Current student ID: [" + studentId + "]");
+        // Create separate VBoxes for each category
+        VBox societyBox = new VBox(5);
+        VBox uniformBox = new VBox(5);
+        VBox sportBox = new VBox(5);
 
-                // Check if this is our student (case-insensitive)
-                if (id.equalsIgnoreCase(studentId)) {
-                    System.out.println("Found matching student! Subjects line: " + subjects);
+        // Add category labels
+        Label societyLabel = new Label("Society:");
+        Label uniformLabel = new Label("Body Uniform:");
+        Label sportLabel = new Label("Sport:");
 
-                    // Split and process subjects
-                    String[] subjectCodes = subjects.split(",");
-                    for (String code : subjectCodes) {
-                        code = code.trim();
-                        SubjectEntry entry = subjectDatabase.get(code);
-                        if (entry != null) {
-                            subjectList.add(entry);
-                            System.out.println("Added subject: " + code + " - " + entry.getName());
-                        } else {
-                            System.out.println("Warning: Subject not found in database: " + code);
-                        }
-                    }
-                    break;
+        societyBox.getChildren().add(societyLabel);
+        uniformBox.getChildren().add(uniformLabel);
+        sportBox.getChildren().add(sportLabel);
+
+        // Load club names from file
+        Map<String, String> clubNames = new HashMap<>();
+        try (BufferedReader reader = new BufferedReader(new FileReader("ClubSocieties.txt"))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                String[] parts = line.split(",");
+                if (parts.length == 2) {
+                    clubNames.put(parts[0].trim(), parts[1].trim());
                 }
             }
         } catch (IOException e) {
             e.printStackTrace();
-            System.err.println("Error reading UserData.txt: " + e.getMessage());
-            showAlert(Alert.AlertType.ERROR, "Error", "Failed to load student data: " + e.getMessage());
         }
 
-        if (subjectList.isEmpty()) {
-            System.out.println("No subjects found for student ID: " + studentId);
-            showAlert(Alert.AlertType.WARNING, "Warning",
-                    "No subjects found for student ID: " + studentId);
-        } else {
-            System.out.println("Successfully loaded " + subjectList.size() +
-                    " subjects for student ID: " + studentId);
+        // Categorize clubs
+        for (String clubCode : student.clubs) {
+            String clubName = clubNames.getOrDefault(clubCode, clubCode);
+            Label clubLabel = new Label("- " + clubName);
+            clubLabel.setStyle("-fx-padding: 0 0 0 20;"); // Add indent
+
+            if (clubCode.startsWith("P")) {
+                societyBox.getChildren().add(clubLabel);
+            } else if (clubCode.startsWith("B")) {
+                uniformBox.getChildren().add(clubLabel);
+            } else if (clubCode.startsWith("S")) {
+                sportBox.getChildren().add(clubLabel);
+            }
         }
 
-        table.setItems(FXCollections.observableArrayList(subjectList));
+        Button closeButton = createStyledButton("Close", "#f44336");
+        closeButton.setOnAction(e -> clubStage.close());
+
+        layout.getChildren().addAll(titleLabel, societyBox, uniformBox, sportBox, closeButton);
+
+        Scene scene = new Scene(layout, 400, 500);
+        clubStage.setTitle("Club & Activities");
+        clubStage.setScene(scene);
+        clubStage.show();
+    }
+
+    private void openCocurriculumTranscript() {
+        try {
+            Stage transcriptStage = new Stage();
+            CocurriculumMarkCalculatorGUI transcriptGUI = new CocurriculumMarkCalculatorGUI();
+            transcriptGUI.setStudentId(currentStudentId);
+            transcriptGUI.start(transcriptStage);
+        } catch (Exception e) {
+            e.printStackTrace();
+            showAlert(Alert.AlertType.ERROR, "Error", "Failed to open Co-curriculum Transcript: " + e.getMessage());
+        }
+    }
+
+    private void logout() {
+        currentStudentId = null;
+        showLoginScreen();
     }
 
     private void showAlert(Alert.AlertType type, String title, String content) {
@@ -163,18 +477,7 @@ public class AcademicInfoGUI extends Application {
         alert.showAndWait();
     }
 
-    public static class SubjectEntry {
-        private String code;
-        private String name;
-
-        public SubjectEntry(String code, String name) {
-            this.code = code;
-            this.name = name;
-        }
-
-        public String getCode() { return code; }
-        public String getName() { return name; }
-        public void setCode(String code) { this.code = code; }
-        public void setName(String name) { this.name = name; }
+    public static void main(String[] args) {
+        launch(args);
     }
 }
