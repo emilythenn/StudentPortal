@@ -1,0 +1,46 @@
+package com.example;
+
+import jakarta.mail.*;
+import jakarta.mail.internet.*;
+
+import java.util.Properties;
+
+class EmailSender {
+
+    public static void sendTranscript(String recipientEmail, String transcriptContent) {
+        // SMTP server configuration
+        final String smtpHost = "smtp.gmail.com";
+        final int smtpPort = 587;
+        final String senderEmail = "your_email@gmail.com"; // Replace with your email
+        final String senderPassword = "your_email_password"; // Replace with your email password or app password
+
+        Properties properties = new Properties();
+        properties.put("mail.smtp.auth", "true");
+        properties.put("mail.smtp.starttls.enable", "true");
+        properties.put("mail.smtp.host", smtpHost);
+        properties.put("mail.smtp.port", smtpPort);
+
+        // Authenticate the sender's email
+        Session session = Session.getInstance(properties, new Authenticator() {
+            @Override
+            protected PasswordAuthentication getPasswordAuthentication() {
+                return new PasswordAuthentication(senderEmail, senderPassword);
+            }
+        });
+
+        try {
+            // Create a message
+            Message message = new MimeMessage(session);
+            message.setFrom(new InternetAddress(senderEmail));
+            message.setRecipient(Message.RecipientType.TO, new InternetAddress(recipientEmail));
+            message.setSubject("Your Co-Curriculum Transcript");
+            message.setText(transcriptContent);
+
+            // Send the email
+            Transport.send(message);
+            System.out.println("Email sent successfully to " + recipientEmail);
+        } catch (MessagingException e) {
+            System.err.println("Error sending email: " + e.getMessage());
+        }
+    }
+}
