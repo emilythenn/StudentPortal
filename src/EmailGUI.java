@@ -116,8 +116,8 @@ public class EmailGUI extends Application {
 
         String smtpHost = "smtp.gmail.com";
         String smtpPort = "587";
-        String username = "m-860935@moe-dl.edu.my";  // Enter your Gmail username
-        String password = "exnssmpudhmnmgui";  // Enter your Gmail password
+        String username = "...";  // Enter your Gmail username
+        String password = ".....";  // Enter your Gmail password
 
         try {
             // Set up mail properties
