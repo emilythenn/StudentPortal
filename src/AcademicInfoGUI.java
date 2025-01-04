@@ -80,13 +80,20 @@ public class AcademicInfoGUI extends Application {
         titleLabel.setStyle("-fx-font-size: 24px; -fx-font-weight: bold;");
 
         TableView<SubjectEntry> subjectsTable = createSubjectsTable();
-        loadStudentSubjects(subjectsTable);
+
+        // ComboBox for sorting
+        ComboBox<String> sortOptions = new ComboBox<>();
+        sortOptions.getItems().addAll("Sort by Code", "Sort by Name");
+        sortOptions.setValue("Sort by Code");
+        sortOptions.setOnAction(e -> loadStudentSubjects(subjectsTable, sortOptions.getValue()));
+
+        loadStudentSubjects(subjectsTable, "Sort by Code");
 
         Button closeButton = new Button("Close");
         closeButton.setStyle("-fx-background-color: #f44336; -fx-text-fill: white;");
         closeButton.setOnAction(e -> stage.close());
 
-        layout.getChildren().addAll(titleLabel, subjectsTable, closeButton);
+        layout.getChildren().addAll(titleLabel, sortOptions, subjectsTable, closeButton);
 
         Scene scene = new Scene(layout, 600, 400);
         stage.setTitle("Academic Information - Student " + studentId);
@@ -109,7 +116,7 @@ public class AcademicInfoGUI extends Application {
         return table;
     }
 
-    private void loadStudentSubjects(TableView<SubjectEntry> table) {
+    private void loadStudentSubjects(TableView<SubjectEntry> table, String sortCriteria) {
         List<SubjectEntry> subjectList = new ArrayList<>();
         System.out.println("Looking for subjects for student ID: " + studentId);
 
@@ -155,6 +162,14 @@ public class AcademicInfoGUI extends Application {
                     "No subjects found for student ID: " + studentId);
         }
 
+        // Sorting logic
+        if ("Sort by Code".equals(sortCriteria)) {
+            subjectList.sort(Comparator.comparing(SubjectEntry::getCode));
+        } else {
+            subjectList.sort(Comparator.comparing(SubjectEntry::getName));
+        }
+
+        // Set sorted subjects to the TableView
         table.setItems(FXCollections.observableArrayList(subjectList));
     }
 
@@ -179,5 +194,9 @@ public class AcademicInfoGUI extends Application {
         public String getName() { return name; }
         public void setCode(String code) { this.code = code; }
         public void setName(String name) { this.name = name; }
+    }
+
+    public static void main(String[] args) {
+        launch(args);
     }
 }
