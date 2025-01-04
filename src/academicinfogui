@@ -1,0 +1,160 @@
+package com.example;
+
+import javafx.application.Application;
+import javafx.geometry.Insets;
+import javafx.scene.Scene;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.control.ComboBox;
+import javafx.scene.layout.VBox;
+import javafx.stage.Stage;
+import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.*;
+
+public class AcademicInfoGUI extends Application {
+    private String studentId;
+    private final Map<String, String> subjectDatabase;
+    private final String SUBJECTS_FILE = "AcademicSubjects.txt";
+    private final String USERDATA_FILE = "UserData.txt";
+
+    public AcademicInfoGUI() {
+        this.studentId = "";
+        this.subjectDatabase = new HashMap<>();
+    }
+
+    public AcademicInfoGUI(String studentId) {
+        this.studentId = studentId;
+        this.subjectDatabase = new HashMap<>();
+        loadSubjectDatabase();
+    }
+
+    public void setStudentId(String studentId) {
+        this.studentId = studentId;
+        loadSubjectDatabase();
+    }
+
+    private void loadSubjectDatabase() {
+        subjectDatabase.clear();
+
+        File file = new File(SUBJECTS_FILE);
+        if (!file.exists()) {
+            System.out.println("Subject database file not found!");
+            return;
+        }
+
+        try (BufferedReader reader = new BufferedReader(new FileReader(SUBJECTS_FILE))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                line = line.trim();
+                if (!line.isEmpty()) {
+                    String[] parts = line.split(",");
+                    if (parts.length == 2) {
+                        String code = parts[0].trim();
+                        String name = parts[1].trim();
+                        subjectDatabase.put(code, name);
+                    }
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public void start(Stage stage) {
+        VBox layout = new VBox(10);
+        layout.setPadding(new Insets(20));
+
+        Label titleLabel = new Label("Example Result for student " + studentId);
+        titleLabel.setStyle("-fx-font-size: 18px; -fx-font-weight: bold;");
+
+        Label enrolledLabel = new Label("Enrolled Subjects:");
+        enrolledLabel.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");
+
+        Label separator = new Label("====================================================");
+
+        VBox subjectList = new VBox(5);
+
+        // ComboBox for sorting
+        ComboBox<String> sortOptions = new ComboBox<>();
+        sortOptions.getItems().addAll("Sort by Code", "Sort by Name");
+        sortOptions.setValue("Sort by Code");
+        sortOptions.setOnAction(e -> loadStudentSubjects(subjectList, sortOptions.getValue()));
+
+        loadStudentSubjects(subjectList, "Sort by Code");
+
+        Button closeButton = new Button("Close");
+        closeButton.setStyle("-fx-background-color: #f44336; -fx-text-fill: white;");
+        closeButton.setOnAction(e -> stage.close());
+
+        layout.getChildren().addAll(titleLabel, enrolledLabel, separator, sortOptions, subjectList, closeButton);
+
+        Scene scene = new Scene(layout, 500, 400);
+        stage.setTitle("Academic Information");
+        stage.setScene(scene);
+        stage.show();
+    }
+
+    private void loadStudentSubjects(VBox subjectList, String sortCriteria) {
+        subjectList.getChildren().clear();
+
+        try {
+            List<String> allLines = Files.readAllLines(Paths.get(USERDATA_FILE));
+
+            for (int i = 0; i < allLines.size(); i += 5) {
+                if (i + 3 >= allLines.size()) break;
+
+                String id = allLines.get(i + 1).trim();
+                String subjects = allLines.get(i + 3).trim();
+
+                if (id.equalsIgnoreCase(studentId)) {
+                    String[] subjectCodes = subjects.split(",");
+                    List<String> sortedSubjects = new ArrayList<>();
+
+                    for (String code : subjectCodes) {
+                        code = code.trim();
+                        String name = subjectDatabase.get(code);
+                        if (name != null) {
+                            sortedSubjects.add(code + ": " + name);
+                        } else {
+                            sortedSubjects.add(code + ": [Subject not found]");
+                        }
+                    }
+
+                    // Sort subjects based on criteria
+                    if ("Sort by Code".equals(sortCriteria)) {
+                        sortedSubjects.sort(Comparator.naturalOrder());
+                    } else {
+                        sortedSubjects.sort(Comparator.comparing(s -> s.split(": ")[1]));
+                    }
+
+                    for (String subject : sortedSubjects) {
+                        Label subjectLabel = new Label(subject);
+                        subjectList.getChildren().add(subjectLabel);
+                    }
+                    return;
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+            showAlert(Alert.AlertType.ERROR, "Error", "Failed to load student data: " + e.getMessage());
+        }
+
+        showAlert(Alert.AlertType.WARNING, "Warning", "No subjects found for student ID: " + studentId);
+    }
+
+    private void showAlert(Alert.AlertType type, String title, String content) {
+        Alert alert = new Alert(type);
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.setContentText(content);
+        alert.showAndWait();
+    }
+
+    public static void main(String[] args) {
+        launch(args);
+    }
+}
