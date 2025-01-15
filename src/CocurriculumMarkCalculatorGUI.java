@@ -1,4 +1,3 @@
-
 import javafx.application.Application;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -9,6 +8,7 @@ import javafx.scene.layout.HBox;
 import javafx.stage.Stage;
 import javafx.scene.text.Font;
 import java.io.*;
+import javafx.application.Platform;
 
 public class CocurriculumMarkCalculatorGUI extends Application {
     private TextArea transcriptArea;
@@ -16,12 +16,23 @@ public class CocurriculumMarkCalculatorGUI extends Application {
     private CocurriculumMarkCalculator calculator;
     private PDFGenerator pdfGenerator;
     private String generatedTranscriptContent;
+    private String studentId; // Add this field
+
+    // Add constructor
+    public CocurriculumMarkCalculatorGUI(String studentId) {
+        this.studentId = studentId;
+    }
+
+    // Add no-arg constructor for backward compatibility
+    public CocurriculumMarkCalculatorGUI() {
+        this.studentId = null;
+    }
 
     @Override
     public void start(Stage primaryStage) {
         calculator = new CocurriculumMarkCalculator();
         calculator.loadData();
-        pdfGenerator = new PDFGenerator(); // Initialize pdfGenerator here
+        pdfGenerator = new PDFGenerator();
 
         // Create main container
         VBox mainContainer = new VBox(15);
@@ -43,6 +54,14 @@ public class CocurriculumMarkCalculatorGUI extends Application {
         matricField.setPromptText("Enter matric number");
         matricField.setPrefWidth(150);
 
+        // If studentId is provided, set it and disable the field
+        if (studentId != null) {
+            matricField.setText(studentId);
+            matricField.setEditable(false);
+            // Automatically generate transcript when opened
+            Platform.runLater(this::generateTranscript);
+        }
+
         Button generateButton = new Button("Generate Transcript");
         generateButton.setStyle("-fx-background-color: #4CAF50; -fx-text-fill: white;");
 
@@ -59,23 +78,17 @@ public class CocurriculumMarkCalculatorGUI extends Application {
         transcriptArea.setPrefRowCount(20);
         transcriptArea.setWrapText(true);
 
-        // Add components to main container
         mainContainer.getChildren().addAll(titleLabel, inputBox, transcriptArea);
 
-        // Create scene
         Scene scene = new Scene(mainContainer, 800, 600);
-
-        // Set up stage
         primaryStage.setTitle("Co-curriculum Mark Calculator");
         primaryStage.setScene(scene);
         primaryStage.setMinWidth(600);
         primaryStage.setMinHeight(400);
 
-        // Add button actions
         generateButton.setOnAction(e -> generateTranscript());
         sendEmailButton.setOnAction(e -> openEmailGUI());
 
-        // Show the stage
         primaryStage.show();
     }
 
