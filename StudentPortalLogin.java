@@ -237,7 +237,6 @@ public class StudentPortalLogin extends Application {
         dialog.show();
     }
 
-
     private boolean isValidPassword(String password) {
         if (password.length() < 8) return false;
 
@@ -483,13 +482,8 @@ public class StudentPortalLogin extends Application {
     private void openCocurriculumTranscript() {
         try {
             Stage transcriptStage = new Stage();
-            CocurriculumMarkCalculatorGUI transcriptGUI = new CocurriculumMarkCalculatorGUI();
+            CocurriculumMarkCalculatorGUI transcriptGUI = new CocurriculumMarkCalculatorGUI(currentStudentId); // Pass the ID to constructor
             transcriptGUI.start(transcriptStage);
-
-            AcademicInfoGUI setStudentId = new AcademicInfoGUI();
-            setStudentId.setStudentId(currentStudentId);
-
-
         } catch (Exception e) {
             e.printStackTrace();
             showAlert(Alert.AlertType.ERROR, "Error", "Failed to open Co-curriculum Transcript: " + e.getMessage());
