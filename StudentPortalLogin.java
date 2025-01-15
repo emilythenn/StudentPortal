@@ -467,69 +467,18 @@ public class StudentPortalLogin extends Application {
         }
     }
 
-    private void openClubMembership() {
-        Stage clubStage = new Stage();
-        VBox layout = new VBox(15);
-        layout.setPadding(new Insets(20));
-        layout.setAlignment(Pos.CENTER);
-
-        Student student = students.get(currentStudentId.toLowerCase());
-        Label titleLabel = new Label("Club & Activities");
-        titleLabel.setStyle("-fx-font-size: 20px; -fx-font-weight: bold;");
-
-        // Create separate VBoxes for each category
-        VBox societyBox = new VBox(5);
-        VBox uniformBox = new VBox(5);
-        VBox sportBox = new VBox(5);
-
-        // Add category labels
-        Label societyLabel = new Label("Society:");
-        Label uniformLabel = new Label("Body Uniform:");
-        Label sportLabel = new Label("Sport:");
-
-        societyBox.getChildren().add(societyLabel);
-        uniformBox.getChildren().add(uniformLabel);
-        sportBox.getChildren().add(sportLabel);
-
-        // Load club names from file
-        Map<String, String> clubNames = new HashMap<>();
-        try (BufferedReader reader = new BufferedReader(new FileReader("ClubSocieties.txt"))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                String[] parts = line.split(",");
-                if (parts.length == 2) {
-                    clubNames.put(parts[0].trim(), parts[1].trim());
-                }
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        // Categorize clubs
-        for (String clubCode : student.clubs) {
-            String clubName = clubNames.getOrDefault(clubCode, clubCode);
-            Label clubLabel = new Label("- " + clubName);
-            clubLabel.setStyle("-fx-padding: 0 0 0 20;"); // Add indent
-
-            if (clubCode.startsWith("P")) {
-                societyBox.getChildren().add(clubLabel);
-            } else if (clubCode.startsWith("B")) {
-                uniformBox.getChildren().add(clubLabel);
-            } else if (clubCode.startsWith("S")) {
-                sportBox.getChildren().add(clubLabel);
+   private void openClubMembership(){
+            try {
+                System.out.println("Opening club membership with ID: " + currentStudentId);
+                Stage clubStage = new Stage();
+                ClubMembershipGUI clubMembership = new ClubMembershipGUI();
+                clubMembership.setStudentId(currentStudentId);
+                clubMembership.start(clubStage);
+            } catch (Exception e) {
+                e.printStackTrace();
+                showAlert(Alert.AlertType.ERROR, "Error", "Failed to open Club Membership");
             }
         }
-
-        Button closeButton = createStyledButton("Close", "#f44336");
-        closeButton.setOnAction(e -> clubStage.close());
-
-        layout.getChildren().addAll(titleLabel, societyBox, uniformBox, sportBox, closeButton);
-
-        Scene scene = new Scene(layout, 400, 500);
-        clubStage.setTitle("Club & Activities");
-        clubStage.setScene(scene);
-        clubStage.show();
-    }
 
     private void openCocurriculumTranscript() {
         try {
