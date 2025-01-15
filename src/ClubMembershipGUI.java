@@ -1,3 +1,5 @@
+package com.example.studentportalapp;
+
 import javafx.application.Application;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
@@ -24,25 +26,21 @@ public class ClubMembershipGUI extends Application {
         Label titleLabel = new Label("Student Cocurricular Club Membership");
         titleLabel.setStyle("-fx-font-size: 18; -fx-font-weight: bold;");
 
-        TextField studentIdField = new TextField();
-        studentIdField.setPromptText("Enter Student ID");
-
-        Button loadButton = new Button("Load Clubs");
-        loadButton.setStyle("-fx-background-color: #4CAF50; -fx-text-fill: white;");
-
         TextArea clubsArea = new TextArea();
         clubsArea.setEditable(false);
         clubsArea.setWrapText(true);
         clubsArea.setPrefRowCount(15);
 
-        loadButton.setOnAction(e -> {
-            setStudentId(studentIdField.getText());  // Get the student ID from the input field
+        // Automatically load and display clubs based on the student ID
+        if (studentId != null && !studentId.isEmpty()) {
             loadClubDetails();  // Load the club details from the file
-            loadStudentClubs();  // Load the clubs for the entered student ID
+            loadStudentClubs();  // Load the clubs for the given student ID
             displayClubs(clubsArea);  // Display the clubs in the TextArea
-        });
+        } else {
+            clubsArea.setText("No student ID provided. Cannot load club data.");
+        }
 
-        layout.getChildren().addAll(titleLabel, studentIdField, loadButton, new Separator(), clubsArea);
+        layout.getChildren().addAll(titleLabel, new Separator(), clubsArea);
 
         Scene scene = new Scene(layout, 500, 400);
         primaryStage.setScene(scene);
@@ -66,7 +64,6 @@ public class ClubMembershipGUI extends Application {
     }
 
     private void displayClubs(TextArea clubsArea) {
-        // If no clubs are found, show a message
         if (studentClubs.isEmpty()) {
             clubsArea.setText("No clubs found for student ID: " + studentId);
             return;
@@ -83,7 +80,7 @@ public class ClubMembershipGUI extends Application {
                 String[] clubDetailsArray = clubDetails.get(club);
                 String name = clubDetailsArray[0];
                 String category = clubDetailsArray[1];
-                categorisedClubs.get(category).add(club + " - " + name);
+                categorisedClubs.get(category).add(club + "\n  - " + name); // Code and name on new lines
             }
         }
 
@@ -91,9 +88,11 @@ public class ClubMembershipGUI extends Application {
         StringBuilder display = new StringBuilder();
         for (String category : categorisedClubs.keySet()) {
             if (!categorisedClubs.get(category).isEmpty()) {
-                display.append(category).append(": ")
-                        .append(String.join(", ", categorisedClubs.get(category)))
-                        .append("\n");
+                display.append(category).append(":\n");
+                for (String clubInfo : categorisedClubs.get(category)) {
+                    display.append(clubInfo).append("\n\n"); // Add spacing between clubs
+                }
+                display.append("\n"); // Add spacing between categories
             }
         }
 
@@ -104,6 +103,7 @@ public class ClubMembershipGUI extends Application {
             clubsArea.setText(display.toString());
         }
     }
+
 
     private void showAlert(String title, String content) {
         Alert alert = new Alert(Alert.AlertType.ERROR);
